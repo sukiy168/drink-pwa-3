@@ -1,0 +1,29 @@
+// ============================================================
+//  Firebase 設定（含 SSR 保護）
+//  Next.js 在 build 時會跑 server 端，不能初始化 Firebase
+//  所以只在瀏覽器環境（client side）才初始化
+// ============================================================
+import { initializeApp, getApps } from "firebase/app";
+import { getDatabase } from "firebase/database";
+
+const firebaseConfig = {
+  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL:       process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// ⚠️ 只在瀏覽器端 + 有設定時才初始化，避免 build 時 crash
+let db = null;
+
+if (typeof window !== "undefined" && firebaseConfig.projectId) {
+  const app = getApps().length === 0
+    ? initializeApp(firebaseConfig)
+    : getApps()[0];
+  db = getDatabase(app);
+}
+
+export { db };
