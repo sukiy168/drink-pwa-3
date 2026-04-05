@@ -25,6 +25,7 @@ export function useOrders(roomCode, userId) {
       if (data) {
         setRoomInfo({
           status: data.status,
+          shopId: data.shopId,
           shopName: data.shopName,
           hostName: data.hostName,
           createdBy: data.createdBy,
