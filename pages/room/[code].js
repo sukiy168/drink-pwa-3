@@ -102,10 +102,11 @@ export default function RoomPage() {
       {screen === "group" && (
         <GroupView
           allOrders={allOrders} shopInfo={shopInfo} roomInfo={roomInfo}
-          isHost={isHost} userId={uid}
+          isHost={isHost} userId={uid} roomCode={code}
           onBack={() => setScreen("menu")}
           onClose={closeOrder} onReopen={reopenOrder}
           showToast={showToast}
+          router={router}
         />
       )}
     </div>
@@ -332,7 +333,7 @@ function CartView({ myItems, myTotal, myCount, shopInfo, userName, isHost, onBac
 // ══════════════════════════════════════════════════════════
 //  GroupView（主揪視角）
 // ══════════════════════════════════════════════════════════
-function GroupView({ allOrders, shopInfo, roomInfo, isHost, userId, onBack, onClose, onReopen, showToast }) {
+function GroupView({ allOrders, shopInfo, roomInfo, isHost, userId, roomCode, onBack, onClose, onReopen, showToast, router }) {
   const isClosed = roomInfo?.status === "closed";
 
   const userOrders = useMemo(() => {
@@ -368,6 +369,30 @@ function GroupView({ allOrders, shopInfo, roomInfo, isHost, userId, onBack, onCl
       await navigator.clipboard.writeText(orderText);
       showToast("✅ 已複製下單清單！");
     }
+  }
+
+  function handleComplete() {
+    // 儲存歷史紀錄到 localStorage
+    const prev = JSON.parse(localStorage.getItem("drinkHistory") || "[]");
+    const record = {
+      id: `${roomCode}_${Date.now()}`,
+      roomCode,
+      shopId: shopInfo.id,
+      shopName: roomInfo?.shopName || shopInfo.name,
+      shopEmoji: shopInfo.emoji,
+      shopColor: shopInfo.color,
+      hostName: roomInfo?.hostName || "",
+      savedAt: Date.now(),
+      grandTotal,
+      grandCount,
+      peopleCount: userOrders.length,
+      orderText,
+    };
+    // 同一房間只保留最新一筆
+    const filtered = prev.filter(h => h.roomCode !== roomCode);
+    filtered.unshift(record);
+    localStorage.setItem("drinkHistory", JSON.stringify(filtered.slice(0, 10)));
+    router.push("/");
   }
 
   return (
@@ -441,6 +466,10 @@ function GroupView({ allOrders, shopInfo, roomInfo, isHost, userId, onBack, onCl
             bg={isClosed ? "#4CAF50" : C.red} full
           />
         )}
+        {isHost && isClosed && userOrders.length > 0 && (
+          <Btn label="✅ 儲存紀錄，開新揪團" onClick={handleComplete} bg="#1a1a2e" full />
+        )}
+        <Btn label="🏠 回首頁" onClick={() => router.push("/")} bg="#f0f0f0" color="#555" full />
       </div>
     </div>
   );

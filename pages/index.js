@@ -29,6 +29,11 @@ const S = {
   err: { fontSize: 13, color: "#e53935", marginTop: 8, textAlign: "center" },
 };
 
+function formatDate(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
 export default function Home() {
   const router = useRouter();
   const [tab, setTab] = useState("join");
@@ -39,9 +44,9 @@ export default function Home() {
   const [error, setError] = useState("");
   const [lastRoom, setLastRoom] = useState("");
   const [userId, setUserId] = useState("");
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    // 讀取本地儲存
     const id = localStorage.getItem("drinkUserId") || `u_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
     localStorage.setItem("drinkUserId", id);
     setUserId(id);
@@ -49,6 +54,8 @@ export default function Home() {
     setUserName(name);
     const last = localStorage.getItem("drinkLastRoom") || "";
     setLastRoom(last);
+    const hist = JSON.parse(localStorage.getItem("drinkHistory") || "[]");
+    setHistory(hist);
   }, []);
 
   async function handleJoin() {
@@ -74,6 +81,21 @@ export default function Home() {
     try {
       const code = generateRoomCode();
       await createRoom({ roomCode: code, userId, userName: userName.trim(), shopId: selectedShop.id, shopName: selectedShop.name });
+      localStorage.setItem("drinkUserName", userName.trim());
+      localStorage.setItem("drinkLastRoom", code);
+      router.push(`/room/${code}?uid=${userId}&name=${encodeURIComponent(userName.trim())}&host=1`);
+    } catch(e) { setError("建立失敗，請稍後再試"); }
+    finally { setLoading(false); }
+  }
+
+  async function handleQuickCreate(record) {
+    setError("");
+    if (!userName.trim()) return setError("請先輸入暱稱才能快速揪團");
+    setLoading(true);
+    try {
+      const shop = SHOPS.find(s => s.id === record.shopId) || SHOPS[0];
+      const code = generateRoomCode();
+      await createRoom({ roomCode: code, userId, userName: userName.trim(), shopId: shop.id, shopName: shop.name });
       localStorage.setItem("drinkUserName", userName.trim());
       localStorage.setItem("drinkLastRoom", code);
       router.push(`/room/${code}?uid=${userId}&name=${encodeURIComponent(userName.trim())}&host=1`);
@@ -147,6 +169,41 @@ export default function Home() {
               onClick={handleCreate} disabled={loading}>
               {loading ? "建立中…" : "建立揪團 🎉"}
             </button>
+          </div>
+        )}
+
+        {/* 歷史紀錄 */}
+        {history.length > 0 && (
+          <div style={S.card}>
+            <div style={S.label}>最近揪團紀錄</div>
+            {history.slice(0, 5).map(h => (
+              <div key={h.id} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "12px 0", borderBottom: "1px solid #f0f0f0",
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 20 }}>{h.shopEmoji}</span>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "#222" }}>{h.shopName}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#888" }}>
+                    {formatDate(h.savedAt)} · {h.peopleCount}人 · {h.grandCount}杯 · NT${h.grandTotal}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleQuickCreate(h)}
+                  disabled={loading}
+                  style={{
+                    flexShrink: 0, marginLeft: 12,
+                    background: h.shopColor || "#1a1a2e", color: "#fff",
+                    border: "none", borderRadius: 10, padding: "7px 12px",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    opacity: loading ? 0.7 : 1,
+                  }}>
+                  再揪一次 →
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
